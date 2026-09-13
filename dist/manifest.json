@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "CodeSync - Push to GitHub",
+  "version": "1.0.0",
+  "description": "Multi-Platform Coding Solution to GitHub Chrome Extension",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://api.github.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/content.ts-CLuSYqIl.js"
+      ],
+      "matches": [
+        "https://leetcode.com/problems/*"
+      ],
+      "run_at": "document_idle",
+      "css": [
+        "assets/content-DaEvNOwV.css"
+      ]
+    },
+    {
+      "js": [
+        "assets/injected-main.ts-Cm_hDr-u.js"
+      ],
+      "matches": [
+        "https://leetcode.com/problems/*"
+      ],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://leetcode.com/*"
+      ],
+      "resources": [
+        "src/content/injected-main.ts",
+        "assets/content.ts-CLuSYqIl.js",
+        "assets/injected-main.ts-Cm_hDr-u.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
