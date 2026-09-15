@@ -8,8 +8,10 @@ export class LeetCodeUI {
   private static submissionObserver: MutationObserver | null = null;
   private static retryTimer: number | null = null;
   private static adapter: PlatformAdapter | null = null;
-  private static lastSyncedSubmission = '';
   private static isPushing = false;
+  private static hasAcceptedSubmission = false;
+  private static acceptedProblemSlug = '';
+  private static lastNotifiedSubmissionKey = '';
 
   /**
    * Cleans up any existing injected UI elements and observers
@@ -27,6 +29,10 @@ export class LeetCodeUI {
       window.clearTimeout(this.retryTimer);
       this.retryTimer = null;
     }
+    this.hasAcceptedSubmission = false;
+    this.acceptedProblemSlug = '';
+    this.lastNotifiedSubmissionKey = '';
+    this.isPushing = false;
     const existingBtn = document.getElementById(this.BUTTON_ID);
     if (existingBtn) {
       existingBtn.remove();
@@ -126,7 +132,8 @@ export class LeetCodeUI {
   }
 
   /**
-   * Watches DOM for LeetCode's "Accepted" submission state to trigger auto-sync
+   * Watches DOM for LeetCode's submission state to mark readiness.
+   * Note: Automatic pushing is disabled. Users must explicitly click "Push to GitHub".
    */
   private static startSubmissionObserver(): void {
     if (this.submissionObserver) return;
@@ -134,16 +141,32 @@ export class LeetCodeUI {
     this.submissionObserver = new MutationObserver(() => {
       if (this.isPushing) return;
 
+      const slug = LeetCodeDetector.getProblemSlug() || '';
       const isAccepted = LeetCodeDetector.detectAcceptedSubmission();
-      if (isAccepted) {
-        const slug = LeetCodeDetector.getProblemSlug() || '';
-        const submissionKey = `${slug}-${Math.floor(Date.now() / 15000)}`;
 
-        if (this.lastSyncedSubmission !== submissionKey) {
-          this.lastSyncedSubmission = submissionKey;
-          console.log('[CodeSync] Accepted submission detected! Triggering auto-sync...');
-          this.showToast('🎉 Accepted submission detected! Syncing solution...', 'info');
-          this.executePushFlow(true);
+      if (isAccepted) {
+        this.hasAcceptedSubmission = true;
+        this.acceptedProblemSlug = slug;
+
+        const btn = document.getElementById(this.BUTTON_ID) as HTMLButtonElement | null;
+        if (btn && !btn.classList.contains('codesync-btn-loading') && !btn.classList.contains('codesync-btn-success')) {
+          btn.classList.add('codesync-btn-ready');
+          btn.setAttribute('title', 'Solution Accepted! Click to push to GitHub');
+        }
+
+        const submissionKey = `${slug}-${Math.floor(Date.now() / 15000)}`;
+        if (this.lastNotifiedSubmissionKey !== submissionKey) {
+          this.lastNotifiedSubmissionKey = submissionKey;
+          console.log('[CodeSync] Accepted submission detected. Solution is ready to push.');
+          this.showToast('🎉 Solution Accepted! Click "Push to GitHub" to sync.', 'info');
+        }
+      } else if (LeetCodeDetector.detectFailedSubmission()) {
+        // Clear ready state if the latest run failed
+        this.hasAcceptedSubmission = false;
+        const btn = document.getElementById(this.BUTTON_ID) as HTMLButtonElement | null;
+        if (btn && !btn.classList.contains('codesync-btn-loading')) {
+          btn.classList.remove('codesync-btn-ready');
+          btn.setAttribute('title', 'Push solution directly to GitHub (Accepted solution required)');
         }
       }
     });
@@ -162,7 +185,7 @@ export class LeetCodeUI {
     btn.id = this.BUTTON_ID;
     btn.className = isFloating ? 'codesync-btn codesync-btn-floating' : 'codesync-btn';
     btn.type = 'button';
-    btn.setAttribute('title', 'Push solution directly to GitHub');
+    btn.setAttribute('title', 'Push solution directly to GitHub (Accepted solution required)');
 
     btn.innerHTML = `
       <span class="codesync-btn-icon">🚀</span>
@@ -172,20 +195,35 @@ export class LeetCodeUI {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.executePushFlow(false);
+      this.executePushFlow();
     });
 
     return btn;
   }
 
   /**
-   * Executes the full push pipeline: checks auth, extracts solution & problem, sends to background
+   * Executes the full push pipeline: validates acceptance & auth, extracts solution & problem, sends to background
    */
-  static async executePushFlow(isAuto = false): Promise<void> {
+  static async executePushFlow(): Promise<void> {
     if (this.isPushing) return;
-    this.isPushing = true;
 
     const btn = document.getElementById(this.BUTTON_ID) as HTMLButtonElement | null;
+
+    // Gate check: Solution must be accepted before pushing
+    const currentSlug = LeetCodeDetector.getProblemSlug() || '';
+    const isAccepted =
+      LeetCodeDetector.detectAcceptedSubmission() ||
+      (this.hasAcceptedSubmission && this.acceptedProblemSlug === currentSlug);
+
+    if (!isAccepted) {
+      this.showToast(
+        '⚠️ Solution must be Accepted before pushing to GitHub. Please submit and verify your solution first.',
+        'warning'
+      );
+      return;
+    }
+
+    this.isPushing = true;
 
     // Update button to loading state
     if (btn) {
@@ -281,9 +319,7 @@ export class LeetCodeUI {
         const displayTitle = problem.problemNumber
           ? `#${problem.problemNumber} ${problem.title}`
           : problem.title;
-        const successMsg = isAuto
-          ? `🎉 Auto-synced: ${displayTitle}`
-          : `🎉 Pushed: ${displayTitle}`;
+        const successMsg = `🎉 Pushed: ${displayTitle}`;
 
         this.showToast(successMsg, 'success', pushResult.fileUrl || pushResult.repoUrl);
       } else {
@@ -300,12 +336,26 @@ export class LeetCodeUI {
   }
 
   /**
-   * Resets button back to idle state
+   * Resets button back to idle/ready state
    */
   private static resetButton(btn: HTMLButtonElement | null): void {
     if (!btn) return;
     btn.disabled = false;
     btn.classList.remove('codesync-btn-loading', 'codesync-btn-success');
+
+    const currentSlug = LeetCodeDetector.getProblemSlug() || '';
+    const isAccepted =
+      LeetCodeDetector.detectAcceptedSubmission() ||
+      (this.hasAcceptedSubmission && this.acceptedProblemSlug === currentSlug);
+
+    if (isAccepted) {
+      btn.classList.add('codesync-btn-ready');
+      btn.setAttribute('title', 'Solution Accepted! Click to push to GitHub');
+    } else {
+      btn.classList.remove('codesync-btn-ready');
+      btn.setAttribute('title', 'Push solution directly to GitHub (Accepted solution required)');
+    }
+
     btn.innerHTML = `
       <span class="codesync-btn-icon">🚀</span>
       <span>Push to GitHub</span>

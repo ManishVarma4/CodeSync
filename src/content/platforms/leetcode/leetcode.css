@@ -60,10 +60,31 @@
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.75), rgba(79, 70, 229, 0.75)) !important;
 }
 
+.codesync-btn-ready {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.95)) !important;
+  border-color: rgba(52, 211, 153, 0.6) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  animation: codesync-ready-pulse 2.5s infinite;
+}
+
+.codesync-btn-ready:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 1), rgba(16, 185, 129, 1)) !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.65), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
 .codesync-btn-success {
   background: linear-gradient(135deg, #10b981, #059669) !important;
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4) !important;
   border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+@keyframes codesync-ready-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.75), 0 2px 8px rgba(16, 185, 129, 0.35);
+  }
 }
 
 .codesync-spinner {

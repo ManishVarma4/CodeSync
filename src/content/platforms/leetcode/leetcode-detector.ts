@@ -169,12 +169,55 @@ export class LeetCodeDetector {
       'div[class*="text-sd-green"]',
       'span[class*="text-sd-green"]',
       'div[class*="status-accepted"]',
+      'span[class*="status-accepted"]',
+      '[data-state="accepted"]',
+      '[data-e2e-locator="console-result-accepted"]',
+      'div[class*="text-success"]',
+      'span[class*="text-success"]',
     ];
 
     for (const sel of candidateSelectors) {
       const elements = document.querySelectorAll(sel);
       for (const el of elements) {
-        if (el.textContent?.trim().toLowerCase() === 'accepted') {
+        const text = el.textContent?.trim().toLowerCase();
+        if (text === 'accepted') {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks if a failed submission verdict is currently visible (Wrong Answer, TLE, etc.)
+   */
+  static detectFailedSubmission(): boolean {
+    const failureKeywords = [
+      'wrong answer',
+      'time limit exceeded',
+      'memory limit exceeded',
+      'runtime error',
+      'compile error',
+      'output limit exceeded',
+    ];
+
+    const failureSelectors = [
+      '[data-e2e-locator="submission-result"]',
+      'div[class*="text-red"]',
+      'span[class*="text-red"]',
+      'div[class*="text-sd-red"]',
+      'span[class*="text-sd-red"]',
+      'div[class*="status-error"]',
+      'span[class*="status-error"]',
+      '[data-state="failed"]',
+      '[data-state="error"]',
+    ];
+
+    for (const sel of failureSelectors) {
+      const elements = document.querySelectorAll(sel);
+      for (const el of elements) {
+        const text = el.textContent?.trim().toLowerCase();
+        if (text && failureKeywords.some((keyword) => text.includes(keyword))) {
           return true;
         }
       }
@@ -182,3 +225,4 @@ export class LeetCodeDetector {
     return false;
   }
 }
+

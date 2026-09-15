@@ -125,7 +125,7 @@ export const Options: React.FC = () => {
             ) : (
               <div className="connect-form-wrap">
                 <p className="description-text">
-                  Connect your GitHub account to push problem solutions automatically.
+                  Connect your GitHub account to push accepted problem solutions to GitHub on click.
                 </p>
                 {!showTokenInput ? (
                   <button
